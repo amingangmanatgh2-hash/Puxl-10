@@ -8,6 +8,7 @@ on:
   push:
     paths:
       - '.github/workflows/mod-probe.yml'
+      - '.github/scripts/probe-versions.sh'
 
 permissions:
   contents: read
@@ -20,51 +21,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Collect maven metadata
-        run: |
-          set -u
-          mkdir -p report
-          out=report/versions.md
-          echo "## Available loader versions" > "$out"
-          echo "" >> "$out"
-
-          probe() {
-            local title="$1" url="$2" filter="$3"
-            echo "### $title" >> "$out"
-            raw=$(curl -fsSL --max-time 30 "$url" || true)
-            if [ -z "$raw" ]; then
-              echo "_unreachable: $url_" >> "$out"
-              echo "" >> "$out"
-              return
-            fi
-            echo '```' >> "$out"
-            printf '%s\n' "$raw" | grep -o '<version>[^<]*</version>' | sed 's/<[^>]*>//g' | grep -E "$filter" | tail -25 >> "$out"
-            echo '```' >> "$out"
-            echo "" >> "$out"
-          }
-
-          probe "fabric-loader" "https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml" '^0\.[0-9]+\.[0-9]+$'
-          probe "fabric-api (1.21.1)" "https://maven.fabricmc.net/net/fabricmc/fabric-api/maven-metadata.xml" '\+1\.21\.1$'
-          probe "fabric-api (1.20.1)" "https://maven.fabricmc.net/net/fabricmc/fabric-api/maven-metadata.xml" '\+1\.20\.1$'
-          probe "fabric-loom (fabric maven)" "https://maven.fabricmc.net/fabric-loom/fabric-loom.gradle.plugin/maven-metadata.xml" '^1\.[0-9]+'
-          probe "fabric-loom (plugin portal)" "https://plugins.gradle.org/m2/fabric-loom/fabric-loom.gradle.plugin/maven-metadata.xml" '^1\.[0-9]+'
-          probe "neoforge (21.1.x)" "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml" '^21\.1\.[0-9]+$'
-          probe "moddev-gradle" "https://plugins.gradle.org/m2/net/neoforged/moddev/moddev-gradle/maven-metadata.xml" '^[0-9]+\.[0-9]+'
-          probe "moddev-gradle (neoforged maven)" "https://maven.neoforged.net/releases/net/neoforged/moddev/moddev-gradle/maven-metadata.xml" '^[0-9]+\.[0-9]+'
-          probe "forge (1.20.1-4x)" "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml" '^1\.20\.1-4[0-9]\.'
-          probe "forge (1.21.1-5x)" "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml" '^1\.21\.1-5[0-9]\.'
-          probe "ForgeGradle (plugin portal)" "https://plugins.gradle.org/m2/net/minecraftforge/gradle/ForgeGradle/maven-metadata.xml" '^[0-9]\.[0-9]'
-          probe "forge gradle plugin (forge maven)" "https://maven.minecraftforge.net/net/minecraftforge/gradle/ForgeGradle/maven-metadata.xml" '^[0-9]\.[0-9]'
-          probe "gradle distributions" "https://services.gradle.org/distributions/" 'gradle-8\.[0-9.]+-bin\.zip'
-
-          cat "$out"
+        run: bash .github/scripts/probe-versions.sh report/versions.md > report/probe.log 2>&1 || true; tail -c 3000 report/probe.log
 
       - name: Publish report
-        run: |
-          gh pr comment 1 --body-file report/versions.md --edit-last --create-if-none || true
+        run: gh pr comment 1 --body-file report/versions.md --edit-last --create-if-none || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: mod-version-probe
-          path: report/versions.md
+          path: report/
