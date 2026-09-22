@@ -20,15 +20,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Collect maven metadata
-        run: bash .github/scripts/probe-versions.sh report/versions.md > report/probe.log 2>&1 || true; tail -c 3000 report/probe.log
+      - name: Introspect runner
+        if: always()
+        run: |
+          {
+            echo "## runner introspection"
+            echo ""
+            echo '```'
+            echo "pwd: $(pwd)"
+            echo "bash: $(bash --version | head -1)"
+            echo "curl: $(curl --version | head -1)"
+            echo "files:"
+            ls -la
+            echo "scripts:"
+            ls -la .github/scripts || echo "no scripts dir"
+            echo "git: $(git rev-parse --short HEAD) on $(git branch --show-current)"
+            echo '```'
+          } > diag.md 2>&1 || true
+
+      - name: Run probe
+        if: always()
+        continue-on-error: true
+        run: |
+          mkdir -p report
+          bash .github/scripts/probe-versions.sh report/versions.md >> diag.md 2>&1 || echo "probe exit=$?" >> diag.md
+          echo "report dir:" >> diag.md
+          ls -la report >> diag.md 2>&1 || true
 
       - name: Publish report
-        run: gh pr comment 1 --body-file report/versions.md --edit-last --create-if-none || true
+        if: always()
+        run: |
+          tail -c 20000 diag.md > diag-tail.md || true
+          gh pr comment 1 --body-file diag-tail.md --edit-last --create-if-none || gh pr comment 1 --body-file diag-tail.md || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: mod-version-probe
-          path: report/
+          path: |
+            diag.md
+            report/
