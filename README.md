@@ -109,6 +109,10 @@ Two headless suites run in CI on every push:
 - `npm run smoke:ipc` — the full IPC surface (67 channels) driven exactly like the UI drives it, asserting on
   instance CRUD, account validation, mod listing/toggling, health checks, disk usage, launch guards, update
   handling and the offline assistant.
+- `npm run check:package` — copies the built `out/` into a scratch folder with **no `node_modules`** (the inside of
+  `app.asar`), boots the real main bundle there and asserts the download stack is bundled and 60+ channels register.
+  `undici` and `unzipper` are compiled into the main process, so the installed app has no runtime module resolution
+  to get wrong. CI additionally scans the packaged `app.asar` on the Windows runner for the same markers.
 
 ## How the pieces fit
 
