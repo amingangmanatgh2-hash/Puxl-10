@@ -74,6 +74,21 @@ jobs:
             git push && break || (git pull --rebase --autostash && sleep 5)
           done
 
+      - name: Verify the jar contents
+        if: success()
+        run: |
+          jar=$(ls "mod/${{ matrix.module }}/build/libs/"*.jar | grep -v -- '-sources' | head -1)
+          echo "jar: $jar"
+          unzip -l "$jar" | tail -n 25
+          unzip -l "$jar" | grep -q 'dev/puxl/qol/client/PuxlClient.class' || (echo "shared classes missing" && exit 1)
+          unzip -l "$jar" | grep -q 'assets/puxl-qol/icon.png' || (echo "icon missing" && exit 1)
+          case "${{ matrix.module }}" in
+            fabric-*) unzip -l "$jar" | grep -q 'fabric.mod.json' || (echo "fabric.mod.json missing" && exit 1) ;;
+            neoforge-*) unzip -l "$jar" | grep -q 'META-INF/neoforge.mods.toml' || (echo "neoforge.mods.toml missing" && exit 1) ;;
+            forge-*) unzip -l "$jar" | grep -q 'META-INF/mods.toml' || (echo "mods.toml missing" && exit 1) ;;
+          esac
+          echo "layout ok"
+
       - uses: actions/upload-artifact@v4
         if: success()
         with:

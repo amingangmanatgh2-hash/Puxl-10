@@ -158,3 +158,26 @@ Game files are downloaded from Mojang's public launcher endpoints (or mirrors yo
 public Modrinth API.
 
 MIT licensed — see [LICENSE](LICENSE).
+
+## Puxl QoL — the mod
+
+`mod/` holds **Puxl QoL**, one client-side quality-of-life mod shipped for every common setup:
+
+| Jar | Loader | Minecraft |
+| --- | --- | --- |
+| `puxl-qol-fabric-1.21.1-<version>.jar` | Fabric and Quilt (needs Quilted Fabric API) | 1.21.1 |
+| `puxl-qol-fabric-1.20.1-<version>.jar` | Fabric and Quilt (needs Quilted Fabric API) | 1.20.1 |
+| `puxl-qol-neoforge-1.21.1-<version>.jar` | NeoForge | 1.21.1 |
+| `puxl-qol-forge-1.20.1-<version>.jar` | Forge | 1.20.1 |
+
+It adds a customisable HUD (FPS with 1% lows and a graph, coordinates, biome, ping, memory, session
+stats, waypoint compass), a hold-to-zoom key, named waypoints with death markers, chat timestamps and
+copy tools, and an automatic performance optimiser that walks the vanilla graphics settings down when
+the frame rate drops and back up when it recovers — always restoring your original values when turned
+off. Everything is configurable in game with `P`.
+
+The mod is compiled and released by GitHub Actions: `.github/workflows/mod.yml` builds all four jars
+on every change under `mod/`, and pushing a tag such as `mod-v1.0.0` runs
+`.github/workflows/mod-release.yml`, which attaches the jars to a GitHub release. Downloads therefore
+stay on GitHub, which is what keeps them usable from Iran. See `mod/README.md` for the full feature
+list, keybinds and build instructions.
