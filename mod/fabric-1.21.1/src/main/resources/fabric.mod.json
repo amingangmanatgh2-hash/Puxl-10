@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "puxl-qol",
+  "version": "${version}",
+  "name": "Puxl QoL",
+  "description": "HUD, waypoints, zoom, chat tools and an automatic performance optimiser for the Puxl launcher. Client side only.",
+  "authors": [
+    "Puxl"
+  ],
+  "contact": {
+    "homepage": "https://github.com/amingangmanatgh2-hash/Puxl-10",
+    "issues": "https://github.com/amingangmanatgh2-hash/Puxl-10/issues",
+    "sources": "https://github.com/amingangmanatgh2-hash/Puxl-10"
+  },
+  "license": "MIT",
+  "icon": "assets/puxl-qol/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.puxl.qol.fabric.PuxlQolFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "fabric-api": "*",
+    "minecraft": "~1.21.1",
+    "java": ">=21"
+  },
+  "suggests": {
+    "modmenu": "*",
+    "quilted_fabric_api": "*"
+  }
+}

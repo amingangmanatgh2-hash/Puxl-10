@@ -1,0 +1,58 @@
+plugins {
+    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+}
+
+base {
+    archivesName = 'puxl-qol-forge-1.20.1'
+}
+
+
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+}
+
+version = findProperty('mod_version') ?: '1.0.0'
+
+// The shared, loader-independent sources.
+sourceSets {
+    main {
+        java.srcDir file('../common/src/main/java')
+        resources.srcDir file('../common/src/main/resources')
+    }
+}
+
+// Bytecode level of the targeted Minecraft generation, compiled by whatever JDK the
+// build runs on (21), so no extra toolchain has to be installed.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.3.0'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/mods.toml') {
+        expand 'mod_version': project.version
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'   : 'puxl-qol',
+                'Specification-Version' : project.version,
+                'Implementation-Title'  : 'Puxl QoL',
+                'Implementation-Version': project.version
+        ])
+    }
+    finalizedBy 'reobfJar'
+}

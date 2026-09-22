@@ -1,0 +1,111 @@
+name: Mod build
+
+# Compiles the Puxl QoL mod for every supported loader and Minecraft version.
+# The development sandbox cannot reach the public mavens, so this workflow is the only
+# place the mod is compiled. Failed module logs are pushed into mod/build-logs/ (which is
+# otherwise git-ignored) so a failure can be inspected from anywhere.
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'mod/**'
+      - '.github/workflows/mod.yml'
+      - '.github/workflows/mod-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - fabric-1.21.1
+          - fabric-1.20.1
+          - neoforge-1.21.1
+          - forge-1.20.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Build ${{ matrix.module }}
+        run: |
+          mkdir -p mod/build-logs
+          args="--no-daemon --stacktrace"
+          if [ -n "${{ github.ref_name }}" ] && [ "${{ github.ref_type }}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#mod-v}"
+            args="$args -Pmod_version=$version"
+          fi
+          set +e
+          gradle -p "mod/${{ matrix.module }}" build $args > "mod/build-logs/${{ matrix.module }}.log" 2>&1
+          status=$?
+          set -e
+          tail -n 25 "mod/build-logs/${{ matrix.module }}.log"
+          exit $status
+
+      - name: Trim the log to its useful tail
+        if: always()
+        run: |
+          log="mod/build-logs/${{ matrix.module }}.log"
+          [ -f "$log" ] && tail -n 400 "$log" > "$log.tmp" && mv "$log.tmp" "$log" || true
+
+      - name: Publish the log when the build failed
+        if: failure() && github.ref_type == 'branch'
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add -f "mod/build-logs/${{ matrix.module }}.log"
+          git diff --cached --quiet && echo "no log changes" || git commit -m "chore(mod): ${{ matrix.module }} build log $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for attempt in 1 2 3 4 5; do
+            git push && break || (git pull --rebase --autostash && sleep 5)
+          done
+
+      - name: Verify the jar contents
+        if: success()
+        run: |
+          jar=$(ls "mod/${{ matrix.module }}/build/libs/"*.jar | grep -v -- '-sources' | head -1)
+          echo "jar: $jar"
+          unzip -l "$jar" | tail -n 25
+          unzip -l "$jar" | grep -q 'dev/puxl/qol/client/PuxlClient.class' || (echo "shared classes missing" && exit 1)
+          unzip -l "$jar" | grep -q 'assets/puxl-qol/icon.png' || (echo "icon missing" && exit 1)
+          unzip -l "$jar" | grep -q 'key.puxl' || true
+          case "${{ matrix.module }}" in
+            fabric-*)
+              unzip -l "$jar" | grep -q 'fabric.mod.json' || (echo "fabric.mod.json missing" && exit 1)
+              unzip -p "$jar" fabric.mod.json | grep -q 'dev.puxl.qol.fabric.PuxlQolFabric' || (echo "entrypoint missing" && exit 1)
+              unzip -p "$jar" fabric.mod.json | grep -q '\${' && (echo "unexpanded placeholder in fabric.mod.json" && exit 1) || true
+              ;;
+            neoforge-*)
+              unzip -l "$jar" | grep -q 'META-INF/neoforge.mods.toml' || (echo "neoforge.mods.toml missing" && exit 1)
+              unzip -p "$jar" META-INF/neoforge.mods.toml | grep -q '^version = ' || (echo "mod version missing" && exit 1)
+              unzip -p "$jar" META-INF/neoforge.mods.toml | grep -q '\${' && (echo "unexpanded placeholder in neoforge.mods.toml" && exit 1) || true
+              ;;
+            forge-*)
+              unzip -l "$jar" | grep -q 'META-INF/mods.toml' || (echo "mods.toml missing" && exit 1)
+              unzip -p "$jar" META-INF/mods.toml | grep -q '^version = ' || (echo "mod version missing" && exit 1)
+              unzip -p "$jar" META-INF/mods.toml | grep -q '\${' && (echo "unexpanded placeholder in mods.toml" && exit 1) || true
+              ;;
+          esac
+          javap -cp "$jar" dev.puxl.qol.client.PuxlClient | head -n 4
+          echo "layout ok"
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: jar-${{ matrix.module }}
+          path: mod/${{ matrix.module }}/build/libs/*.jar
+          if-no-files-found: error

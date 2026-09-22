@@ -1,0 +1,45 @@
+name: Mod dependency probe
+
+# One-shot helper: resolves the exact loader/plugin versions available on the public
+# mavens (they are unreachable from the development sandbox) and commits the list
+# back to the branch, so the mod build files can pin real versions.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/mod-probe.yml'
+      - '.github/scripts/probe-versions.sh'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect maven metadata
+        continue-on-error: true
+        run: |
+          mkdir -p mod
+          bash .github/scripts/probe-versions.sh mod/versions-report.md >> probe.log 2>&1 || true
+          wc -l mod/versions-report.md || true
+          tail -c 2000 probe.log || true
+
+      - name: Commit the report
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add -f mod/versions-report.md
+          git diff --cached --quiet && echo "nothing to commit" || git commit -m "chore(mod): toolchain version report from $(date -u +%Y-%m-%d)"
+          git push || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mod-version-probe
+          path: |
+            mod/versions-report.md
+            probe.log

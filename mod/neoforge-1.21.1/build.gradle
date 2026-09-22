@@ -1,0 +1,53 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.147'
+}
+
+base {
+    archivesName = 'puxl-qol-neoforge-1.21.1'
+}
+
+
+
+neoForge {
+    version = '21.1.251'
+}
+
+version = findProperty('mod_version') ?: '1.0.0'
+
+// The shared, loader-independent sources.
+sourceSets {
+    main {
+        java.srcDir file('../common/src/main/java')
+        resources.srcDir file('../common/src/main/resources')
+    }
+}
+
+// Bytecode level of the targeted Minecraft generation, compiled by whatever JDK the
+// build runs on (21), so no extra toolchain has to be installed.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+
+repositories {
+    mavenCentral()
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand 'mod_version': project.version
+    }
+}
+
+jar {
+    manifest {
+        attributes([
+                'Specification-Title'   : 'puxl-qol',
+                'Specification-Version' : project.version,
+                'Implementation-Title'  : 'Puxl QoL',
+                'Implementation-Version': project.version
+        ])
+    }
+}

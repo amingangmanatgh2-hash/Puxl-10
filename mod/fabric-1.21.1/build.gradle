@@ -1,0 +1,43 @@
+plugins {
+    id 'fabric-loom' version '1.11.8'
+}
+
+base {
+    archivesName = 'puxl-qol-fabric-1.21.1'
+}
+
+
+
+// The shared, loader-independent sources live in ../common.
+version = findProperty('mod_version') ?: '1.0.0'
+
+// The shared, loader-independent sources.
+sourceSets {
+    main {
+        java.srcDir file('../common/src/main/java')
+        resources.srcDir file('../common/src/main/resources')
+    }
+}
+
+// Bytecode level of the targeted Minecraft generation, compiled by whatever JDK the
+// build runs on (21), so no extra toolchain has to be installed.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+
+dependencies {
+    minecraft 'com.mojang:minecraft:1.21.1'
+    mappings loom.officialMojangMappings()
+
+    modImplementation 'net.fabricmc:fabric-loader:0.16.14'
+    modImplementation 'net.fabricmc.fabric-api:fabric-api:0.116.17+1.21.1'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}

@@ -1,0 +1,101 @@
+name: Build
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: [main, 'arena/**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Typecheck, smoke tests and bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck main and preload
+        run: npm run typecheck:node
+
+      - name: Typecheck renderer
+        run: npm run typecheck:web
+
+      - name: Logic smoke tests (rules, libraries, mirrors, presets)
+        run: npm run smoke
+
+      - name: IPC integration tests
+        run: npm run smoke:ipc
+
+      - name: Update flow test (local release server)
+        run: npm run smoke:update
+
+      - name: Build bundles
+        run: npm run build
+
+      - name: Packaged layout check (bundled deps, no node_modules)
+        run: npm run check:package
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: puxl-bundles
+          path: out
+          retention-days: 7
+
+  windows:
+    name: Windows installer
+    needs: verify
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package
+        run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify runtime dependencies were packaged
+        shell: pwsh
+        run: |
+          node scripts/check-asar.cjs
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: puxl-windows
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+          retention-days: 30
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+          draft: false
+          generate_release_notes: true
