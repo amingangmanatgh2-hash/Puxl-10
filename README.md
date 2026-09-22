@@ -35,6 +35,9 @@ It is **not** a cheat client. See [What Puxl will never do](#what-puxl-will-neve
   with deterministic UUIDs for singleplayer/LAN.
 - **Console** — the live game log, in the app, with the exact command line available for troubleshooting.
 - **Command palette** — `Ctrl/⌘ + K` to jump to an instance, a page, a setting, or search Modrinth directly.
+- **Self-updates** — checks the GitHub releases API on startup (through the same mirrors/proxy as everything else),
+  shows a banner when a newer version exists, downloads the installer with resume support, then restarts to install.
+  Portable copies are told to swap the file instead of pretending to self-update.
 
 ### Mod manager
 - Browse and search **Modrinth**, pre-filtered to builds that actually run on the selected instance.
@@ -52,6 +55,12 @@ It is **not** a cheat client. See [What Puxl will never do](#what-puxl-will-neve
 - Five **graphics presets** written into `options.txt` without destroying your keybinds or unrelated settings.
 - "Optimise everything" — memory, graphics preset and performance mods in one action.
 - Pre-launch **health checks**: over-allocation, crash reports, mod folder size, missing files.
+
+### Updates
+- Startup check against the GitHub releases API with proxy fallbacks (`api.github.com` → `gh-proxy.com` → `ghfast.top`).
+- Download uses the mirrored, resumable downloader, so a blocked GitHub still works through a proxy prefix.
+- Installer runs silently (`/S`) after the launcher closes; the portable build reveals the new exe instead.
+- The proxy you configure is applied to Electron's own session too, so update checks and remote mod icons honour it.
 
 ### Network (built for Iran and other restricted networks)
 - Three mirror modes: official first, **mirrors first**, or direct only.
@@ -97,9 +106,9 @@ Two headless suites run in CI on every push:
 - `npm run smoke` — launcher logic that breaks silently in production: Mojang rule evaluation, library/native
   resolution across platforms, version inheritance, argument flattening, mirror rewriting, JVM tuning, `options.txt`
   merging, offline UUIDs and the mod registry.
-- `npm run smoke:ipc` — the full IPC surface (60 channels) driven exactly like the UI drives it, asserting on
-  instance CRUD, account validation, mod listing/toggling, health checks, disk usage, launch guards and the
-  offline assistant.
+- `npm run smoke:ipc` — the full IPC surface (67 channels) driven exactly like the UI drives it, asserting on
+  instance CRUD, account validation, mod listing/toggling, health checks, disk usage, launch guards, update
+  handling and the offline assistant.
 
 ## How the pieces fit
 
@@ -115,6 +124,7 @@ src/
     accounts.ts   Microsoft device-code OAuth, offline profiles
     perf.ts       hardware scan, JVM tuning, graphics presets, health checks
     assistant.ts  Gemini (streaming) + offline knowledge base + crash analysis
+    updater.ts    release check, mirrored download and silent install of new versions
     ipc.ts        the typed bridge the UI talks to
   preload/      contextBridge surface (no node in the renderer)
   renderer/     React 19 + Tailwind 4 UI

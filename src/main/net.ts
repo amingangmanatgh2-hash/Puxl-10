@@ -195,12 +195,16 @@ export async function fetchJson<T>(url: string, init: { timeoutMs?: number; head
 }
 
 /** JSON fetch that walks the mirror list until one answers. */
-export async function fetchJsonMirrored<T>(url: string, hint?: MirrorHint): Promise<T> {
+export async function fetchJsonMirrored<T>(
+  url: string,
+  hint?: MirrorHint,
+  init?: { timeoutMs?: number; headers?: Record<string, string> }
+): Promise<T> {
   const candidates = resolveUrls(url, hint)
   let lastError: unknown = new Error(`no route to ${url}`)
   for (const candidate of candidates) {
     try {
-      return await fetchJson<T>(candidate)
+      return await fetchJson<T>(candidate, init)
     } catch (err) {
       lastError = err
     }
@@ -237,6 +241,8 @@ export interface DownloadOptions {
   /** Allow Range-resume of a partial file. */
   resume?: boolean
   attempts?: number
+  /** Called with live byte counts for callers that want their own progress UI. */
+  onProgress?: (received: number, total: number, speed: number) => void
 }
 
 /**
@@ -249,6 +255,7 @@ export async function downloadFile(url: string, dest: string, opts: DownloadOpti
   const attempts = Math.max(1, opts.attempts ?? 3)
   const candidates = resolveUrls(url, opts.hint)
   const useResume = opts.resume !== false
+  const reportProgress = opts.onProgress
 
   await fsp.mkdir(path.dirname(dest), { recursive: true })
 
@@ -301,19 +308,30 @@ export async function downloadFile(url: string, dest: string, opts: DownloadOpti
 
       const sink = fs.createWriteStream(dest, { flags: partial ? 'a' : 'w' })
       const source = Readable.fromWeb(res.body as never)
+      let lastReport = 0
       source.on('data', (chunk: Buffer) => {
         received += chunk.length
         windowBytes += chunk.length
         const elapsed = Math.max(1, Date.now() - started) / 1000
+        const speed = windowBytes / elapsed
         emit({
           id,
           label,
           url: target,
           received,
           total,
-          speed: windowBytes / elapsed,
+          speed,
           state: 'running'
         })
+        const now = Date.now()
+        if (reportProgress && (now - lastReport > 250 || (total > 0 && received >= total))) {
+          lastReport = now
+          try {
+            reportProgress(received, total, speed)
+          } catch {
+            /* progress listeners must never break a download */
+          }
+        }
       })
 
       await pipeline(source, sink)

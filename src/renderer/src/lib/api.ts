@@ -1,5 +1,6 @@
 import type {
   AccountView,
+  UpdateState,
   HealthCheck,
   HardwareProfile,
   InstallProgress,
@@ -117,6 +118,16 @@ interface Bridge {
     verify(): Promise<{ ok: boolean; message: string }>
     crash(instanceId: string): Promise<string>
     onChunk(handler: (payload: { text: string }) => void): () => void
+  }
+  update: {
+    state(): Promise<UpdateState>
+    check(): Promise<UpdateState>
+    download(): Promise<UpdateState>
+    install(): Promise<boolean>
+    openRelease(): Promise<boolean>
+    clearCache(): Promise<boolean>
+    isPortable(): Promise<boolean>
+    onState(handler: (payload: UpdateState) => void): () => void
   }
   transfers: {
     onProgress(handler: (payload: TransferProgress) => void): () => void

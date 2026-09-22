@@ -119,6 +119,13 @@ async function main(): Promise<void> {
       'accounts:setActive',
       'accounts:msBegin',
       'accounts:msPoll',
+      'update:state',
+      'update:check',
+      'update:download',
+      'update:install',
+      'update:openRelease',
+      'update:clearCache',
+      'update:portable',
       'assistant:ask',
       'assistant:verify',
       'assistant:crash',
@@ -293,6 +300,19 @@ async function main(): Promise<void> {
     assert.deepEqual(await call('window:state'), { maximized: false, fullscreen: false })
     assert.equal(await call('window:minimize'), true)
     assert.equal(await call('window:close'), true)
+  })
+
+  await test('update state is queryable without hitting the network', async () => {
+    const state = await call<{ status: string; currentVersion: string }>('update:state')
+    assert.equal(state.status, 'idle')
+    assert.equal(state.currentVersion, '1.1.0')
+    assert.equal(await call<boolean>('update:portable'), false)
+    assert.equal(await call<boolean>('update:clearCache'), true)
+  })
+
+  await test('installing an update that was never downloaded fails cleanly', async () => {
+    const message = await expectError('update:install')
+    assert.match(message, /not been downloaded/i)
   })
 
   await test('external links are restricted to http(s)', async () => {

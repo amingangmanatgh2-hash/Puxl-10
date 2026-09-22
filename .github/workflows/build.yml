@@ -68,6 +68,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify runtime dependencies were packaged
+        shell: pwsh
+        run: |
+          $unpacked = Get-ChildItem dist -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like '*unpacked*' } | Select-Object -First 1
+          if (-not $unpacked) { Write-Error 'no unpacked build directory found'; exit 1 }
+          $asar = Join-Path $unpacked.FullName 'resources/app.asar'
+          if (-not (Test-Path $asar)) { Write-Error 'app.asar missing'; exit 1 }
+          npx --yes asar list $asar > asar-list.txt
+          $missing = @()
+          foreach ($dep in @('node_modules/undici', 'node_modules/unzipper')) {
+            if (-not (Select-String -Path asar-list.txt -Pattern $dep -Quiet)) { $missing += $dep }
+          }
+          if ($missing.Count -gt 0) { Write-Error ("missing runtime deps: " + ($missing -join ', ')); exit 1 }
+          Write-Host 'runtime dependencies present in app.asar'
+          Remove-Item asar-list.txt -ErrorAction SilentlyContinue
+
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
         with:

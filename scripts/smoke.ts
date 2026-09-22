@@ -30,6 +30,7 @@ import { loaderVersionId } from '../src/main/installer'
 import { requiredJavaMajor } from '../src/main/java'
 import { applyGraphicsPreset, optionsForPreset, perfModsFor, readOptions, recommendMemory, tuneJvmArgs } from '../src/main/perf'
 import { offlineUuid, validateName } from '../src/main/accounts'
+import { compareVersions, isPortableBuild, pickInstallerAsset, releaseApiUrls } from '../src/main/updater'
 import { listInstalledMods, readRegistry } from '../src/main/mods'
 import { defaultInstance } from '../src/main/instances'
 
@@ -292,6 +293,36 @@ async function main(): Promise<void> {
     assert.equal(options.graphicsMode, '0')
     const preset = optionsForPreset('cinematic')
     assert.equal(preset.renderDistance, '24')
+  })
+
+  console.log('\nlauncher updates')
+  await test('version comparison handles builds, prefixes and prereleases', () => {
+    assert.equal(compareVersions('1.1.0', '1.0.0'), 1)
+    assert.equal(compareVersions('1.0.0', '1.1.0'), -1)
+    assert.equal(compareVersions('v1.2.0', '1.2.0'), 0)
+    assert.equal(compareVersions('1.10.0', '1.9.9'), 1)
+    assert.equal(compareVersions('1.2.0', '1.2.0-beta.1'), 1)
+    assert.equal(compareVersions('2.0.0', '1.99.99'), 1)
+    assert.equal(compareVersions('1.2', '1.2.0'), 0)
+  })
+  await test('the setup exe wins over the portable build', () => {
+    const assets = [
+      { name: 'Puxl-Launcher-1.1.0-portable.exe', url: 'https://example/portable.exe', size: 1 },
+      { name: 'Puxl-Launcher-1.1.0-setup.exe', url: 'https://example/setup.exe', size: 2 },
+      { name: 'latest.yml', url: 'https://example/latest.yml', size: 3 }
+    ]
+    assert.equal(pickInstallerAsset(assets)?.name, 'Puxl-Launcher-1.1.0-setup.exe')
+    assert.equal(pickInstallerAsset([assets[0]])?.name, 'Puxl-Launcher-1.1.0-portable.exe')
+    assert.equal(pickInstallerAsset([assets[2]]), null)
+  })
+  await test('update checks fall back to GitHub proxies', () => {
+    const urls = releaseApiUrls()
+    assert.ok(urls[0].startsWith('https://api.github.com/repos/'))
+    assert.ok(urls.some((u) => u.includes('gh-proxy.com')))
+    assert.ok(urls.some((u) => u.includes('ghfast.top')))
+  })
+  await test('portable detection only triggers on the portable env vars', () => {
+    assert.equal(isPortableBuild(), false)
   })
 
   console.log('\naccounts and instances')

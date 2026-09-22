@@ -1,9 +1,10 @@
-import { FolderOpen, Globe2, Info, KeyRound, Network, Plus, RefreshCw, Save, ShieldAlert, Trash2 } from 'lucide-react'
+import { FolderOpen, Globe2, Info, KeyRound, Network, Plus, RefreshCw, Rocket, Save, ShieldAlert, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
-import { formatBytes } from '../lib/format'
+import { formatBytes, formatSpeed } from '../lib/format'
 import { useStore } from '../lib/store'
-import { Badge, Button, Card, Field, SectionTitle, Select, Slider, Switch, TextInput } from '../components/ui'
+import type { UpdateState } from '../lib/types'
+import { Badge, Button, Card, Field, ProgressBar, SectionTitle, Select, Slider, Switch, TextInput } from '../components/ui'
 
 export function SettingsView() {
   const { settings, saveSettings, toast, paths, appVersion, hardware } = useStore()
@@ -12,10 +13,19 @@ export function SettingsView() {
   const [checking, setChecking] = useState(false)
   const [probe, setProbe] = useState<{ url: string; routes: string[] } | null>(null)
   const [usage, setUsage] = useState<Record<string, number>>({})
+  const [update, setUpdate] = useState<UpdateState | null>(null)
+  const [updateBusy, setUpdateBusy] = useState(false)
+  const [portable, setPortable] = useState(false)
 
   useEffect(() => setDraft(settings), [settings])
   useEffect(() => {
     void api.system.diskUsage().then(setUsage).catch(() => setUsage({}))
+  }, [])
+
+  useEffect(() => {
+    void api.update.state().then(setUpdate).catch(() => undefined)
+    void api.update.isPortable().then(setPortable).catch(() => undefined)
+    return api.update.onState(setUpdate)
   }, [])
 
   if (!draft) return null
@@ -259,6 +269,117 @@ export function SettingsView() {
             </Button>
             {verify ? <Badge tone={verify.ok ? 'success' : 'danger'}>{verify.message}</Badge> : null}
           </div>
+        </Card>
+
+        <Card className="space-y-5 p-5">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
+            <Rocket style={{ width: 17, height: 17 }} className="text-aqua-400" /> Launcher updates
+          </h3>
+
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Badge tone="brand">v{update?.currentVersion ?? appVersion}</Badge>
+            {update?.status === 'current' ? <Badge tone="success">up to date</Badge> : null}
+            {update?.status === 'checking' ? <Badge tone="brand">checking…</Badge> : null}
+            {update?.status === 'available' ? <Badge tone="aqua">v{update.release.version} available</Badge> : null}
+            {update?.status === 'ready' ? <Badge tone="success">ready to install</Badge> : null}
+            {update?.status === 'error' ? <Badge tone="danger">check failed</Badge> : null}
+            {portable ? <Badge tone="warn">portable build</Badge> : null}
+          </div>
+
+          {update?.status === 'available' || update?.status === 'ready' ? (
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs leading-relaxed text-mist-300">
+              <p className="font-medium text-white">{update.release.tag}</p>
+              {update.release.notes ? <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-mist-400">{update.release.notes}</p> : null}
+            </div>
+          ) : null}
+
+          {update?.status === 'downloading' ? (
+            <div className="space-y-2">
+              <ProgressBar value={update.total ? update.received / update.total : 0} />
+              <p className="font-mono text-[11px] text-mist-400">
+                {formatBytes(update.received)} / {formatBytes(update.total)} · {formatSpeed(update.speed)}
+              </p>
+            </div>
+          ) : null}
+
+          {update?.status === 'error' ? (
+            <p className="text-xs leading-relaxed text-amber-300">
+              {update.message}
+              <br />
+              If GitHub is unreachable from your network, set a proxy above — the update check uses it too.
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              icon={<RefreshCw style={{ width: 14, height: 14 }} />}
+              loading={updateBusy && update?.status !== 'available'}
+              onClick={() => {
+                setUpdateBusy(true)
+                void api.update
+                  .check()
+                  .then((next) => {
+                    setUpdate(next)
+                    if (next.status === 'current') toast('success', 'Puxl is up to date')
+                    if (next.status === 'available') toast('info', `Puxl ${next.release.version} is available`)
+                    if (next.status === 'error') toast('error', 'Update check failed', next.message)
+                  })
+                  .finally(() => setUpdateBusy(false))
+              }}
+            >
+              Check now
+            </Button>
+
+            {update?.status === 'available' ? (
+              <Button
+                variant="primary"
+                loading={updateBusy}
+                onClick={() => {
+                  setUpdateBusy(true)
+                  void api.update
+                    .download()
+                    .then(() => toast('success', 'Update downloaded'))
+                    .catch((err: unknown) => toast('error', 'Download failed', err instanceof Error ? err.message : String(err)))
+                    .finally(() => setUpdateBusy(false))
+                }}
+              >
+                Download update
+              </Button>
+            ) : null}
+
+            {update?.status === 'ready' ? (
+              <Button
+                variant="primary"
+                loading={updateBusy}
+                onClick={() => {
+                  setUpdateBusy(true)
+                  void api.update
+                    .install()
+                    .then(() => toast('info', portable ? 'Portable build: installer revealed' : 'Restarting to install'))
+                    .finally(() => setUpdateBusy(false))
+                }}
+              >
+                Restart &amp; install
+              </Button>
+            ) : null}
+
+            <Button variant="subtle" onClick={() => void api.update.openRelease()}>
+              Release page
+            </Button>
+          </div>
+
+          <Switch
+            checked={draft.checkLauncherUpdates}
+            onChange={(v) => patch({ checkLauncherUpdates: v })}
+            label="Check for updates on startup"
+            description="Runs a few seconds after launch and respects the proxy above. Dev builds never self-update."
+          />
+
+          <p className="text-[11px] leading-relaxed text-mist-400/70">
+            Updates are downloaded through the same mirrored, resumable downloader as game files, so a GitHub proxy
+            works here too. The portable build cannot replace itself — Puxl reveals the new installer instead.
+          </p>
         </Card>
 
         <Card className="space-y-5 p-5">

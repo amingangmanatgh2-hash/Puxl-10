@@ -97,6 +97,16 @@ const api = {
     crash: (instanceId: string) => call('assistant:crash', instanceId),
     onChunk: (handler: (payload: { text: string }) => void) => on('assistant:chunk', handler)
   },
+  update: {
+    state: () => call('update:state'),
+    check: () => call('update:check'),
+    download: () => call('update:download'),
+    install: () => call('update:install'),
+    openRelease: () => call('update:openRelease'),
+    clearCache: () => call('update:clearCache'),
+    isPortable: () => call('update:portable'),
+    onState: (handler: (payload: unknown) => void) => on('update:state', handler)
+  },
   transfers: {
     onProgress: (handler: (payload: unknown) => void) => on('transfer:progress', handler)
   },

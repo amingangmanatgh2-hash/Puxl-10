@@ -154,6 +154,30 @@ export interface TransferProgress {
   error?: string
 }
 
+export interface ReleaseAsset {
+  name: string
+  url: string
+  size: number
+}
+
+export interface ReleaseInfo {
+  version: string
+  tag: string
+  notes: string
+  pageUrl: string
+  publishedAt: string
+  assets: ReleaseAsset[]
+}
+
+export type UpdateState =
+  | { status: 'idle'; currentVersion: string }
+  | { status: 'checking'; currentVersion: string }
+  | { status: 'current'; currentVersion: string }
+  | { status: 'available'; currentVersion: string; release: ReleaseInfo; asset: ReleaseAsset | null }
+  | { status: 'downloading'; currentVersion: string; release: ReleaseInfo; asset: ReleaseAsset; received: number; total: number; speed: number }
+  | { status: 'ready'; currentVersion: string; release: ReleaseInfo; asset: ReleaseAsset; file: string }
+  | { status: 'error'; currentVersion: string; message: string }
+
 export interface LoaderVersion {
   version: string
   stable: boolean

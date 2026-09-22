@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { app, dialog, ipcMain, shell, type BrowserWindow } from 'electron'
+import { app, dialog, ipcMain, session, shell, type BrowserWindow } from 'electron'
 import { onTransferProgress, resolveUrls } from './net'
 import { ensureDirs, paths } from './paths'
 import { applyNetworkSettings, DEFAULT_SETTINGS, loadSettings, resetSettings, saveSettings, type LauncherSettings } from './store'
@@ -60,6 +60,17 @@ import {
   validateName
 } from './accounts'
 import { askAssistant, explainCrash, verifyAssistantKey, type ChatMessage } from './assistant'
+import {
+  checkForUpdates,
+  clearDownloadedUpdates,
+  downloadUpdate,
+  getUpdateState,
+  initUpdater,
+  installUpdate,
+  isPortableBuild,
+  onUpdateState,
+  openReleasePage
+} from './updater'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -100,17 +111,35 @@ function handle(channel: string, fn: (...args: never[]) => Promise<unknown> | un
   })
 }
 
+/**
+ * Console requests, remote images (mod icons) and the update check all run through
+ * Electron's own network stack, so the configured proxy has to be applied there too.
+ */
+export function applyElectronProxy(settings: LauncherSettings): void {
+  try {
+    if (session.defaultSession) {
+      void session.defaultSession.setProxy({ proxyRules: settings.proxyUrl?.trim() || 'direct://' })
+    }
+  } catch {
+    /* no session yet (very early startup) */
+  }
+}
+
 export function registerIpc(): void {
   const settings = loadSettings()
   applyNetworkSettings(settings)
+  applyElectronProxy(settings)
 
   onTransferProgress((progress) => send('transfer:progress', progress))
+  initUpdater()
+  onUpdateState((next) => send('update:state', next))
 
   /* ---------------- settings ---------------- */
   handle('settings:get', () => loadSettings())
   handle('settings:save', (patch: Partial<LauncherSettings>) => {
     const next = saveSettings(patch)
     applyNetworkSettings(next)
+    applyElectronProxy(next)
     return next
   })
   handle('settings:reset', () => {
@@ -491,6 +520,24 @@ export function registerIpc(): void {
   })
   handle('assistant:verify', () => verifyAssistantKey())
   handle('assistant:crash', async (instanceId: string) => explainCrash(instanceId))
+
+  /* ---------------- launcher updates ---------------- */
+  handle('update:state', () => getUpdateState())
+  handle('update:check', () => checkForUpdates())
+  handle('update:download', () => downloadUpdate())
+  handle('update:install', async () => {
+    await installUpdate()
+    return true
+  })
+  handle('update:openRelease', async () => {
+    await openReleasePage()
+    return true
+  })
+  handle('update:clearCache', async () => {
+    await clearDownloadedUpdates()
+    return true
+  })
+  handle('update:portable', () => isPortableBuild())
 
   /* ---------------- window ---------------- */
   handle('window:minimize', () => {

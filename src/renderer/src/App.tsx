@@ -4,6 +4,7 @@ import { Sidebar, type ViewId } from './components/Sidebar'
 import { TitleBar } from './components/TitleBar'
 import { Toasts } from './components/Toasts'
 import { TransferBar } from './components/TransferBar'
+import { UpdateBanner } from './components/UpdateBanner'
 import { Button, Card, Spinner } from './components/ui'
 import { api } from './lib/api'
 import { useStore } from './lib/store'
@@ -56,7 +57,8 @@ export function App() {
         />
 
         <main className="relative flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center justify-end gap-3 px-6 pt-5">
+          <div className="flex flex-wrap items-center justify-end gap-3 px-6 pt-5">
+            <UpdateBanner />
             <TransferBar onOpenConsole={() => setView('home')} />
           </div>
 

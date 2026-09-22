@@ -3,6 +3,7 @@ import { app, BrowserWindow, Menu, Tray, nativeImage, shell, clipboard, dialog }
 import { ensureDirs, paths } from './paths'
 import { loadSettings } from './store'
 import { registerIpc, setMainWindow } from './ipc'
+import { scheduleStartupCheck } from './updater'
 import { gameProcess } from './launch'
 
 const isDev = !app.isPackaged
@@ -113,6 +114,9 @@ if (!app.requestSingleInstanceLock()) {
     const win = createWindow()
     setMainWindow(win)
     createTray(win)
+
+    // Quietly look for a newer release a few seconds after the UI is up.
+    scheduleStartupCheck()
 
     // Ctrl/Cmd+Shift+L copies the launch command for support requests.
     Menu.setApplicationMenu(

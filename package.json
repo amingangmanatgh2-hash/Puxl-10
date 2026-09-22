@@ -1,6 +1,6 @@
 {
   "name": "puxl-launcher",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Puxl Launcher — a fast, beautiful Minecraft Java launcher with a built-in mod manager, performance tuner and Iran-friendly downloads.",
   "main": "./out/main/index.js",
   "author": "Puxl",
@@ -100,6 +100,13 @@
       ],
       "category": "Game",
       "icon": "build/icon.png"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "amingangmanatgh2-hash",
+        "repo": "Puxl-10"
+      }
+    ]
   }
 }

@@ -3,7 +3,17 @@
  * exercised from plain Node during `npm run smoke`.
  */
 const os = require('node:os')
+const fs = require('node:fs')
 const path = require('node:path')
+
+// Report the real launcher version so tests can assert on it.
+const packageVersion = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')).version
+  } catch {
+    return '0.0.0'
+  }
+})()
 
 const appData = process.platform === 'win32' ? process.env.APPDATA : path.join(os.homedir(), 'Library', 'Application Support')
 
@@ -20,7 +30,7 @@ module.exports = {
       if (name === 'logs') return os.tmpdir()
       return os.homedir()
     },
-    getVersion: () => '1.0.0-smoke',
+    getVersion: () => packageVersion,
     getGPUInfo: async () => ({ auxAttributes: { glRenderer: 'Puxl Smoke Renderer' } }),
     isPackaged: false,
     whenReady: async () => undefined,
