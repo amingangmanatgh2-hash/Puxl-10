@@ -89,7 +89,7 @@ public final class PuxlConfig {
     public void sanitise() {
         hud.scale = clamp(hud.scale, 0.5, 2.0);
         hud.lineSpacing = clamp(hud.lineSpacing, 0.5, 2.0);
-        hud.graphSeconds = clamp(hud.graphSeconds, 5, 120);
+        hud.graphSeconds = (int) clamp(hud.graphSeconds, 5, 120);
         zoom.factor = clamp(zoom.factor, 1.5, 20.0);
         zoom.scrollStep = clamp(zoom.scrollStep, 0.1, 3.0);
         zoom.minFactor = clamp(zoom.minFactor, 1.1, 10.0);
@@ -248,7 +248,7 @@ public final class PuxlConfig {
         public boolean copyCoordinatesKey = true;
         public boolean copyLastChatKey = true;
         public boolean openScreenshotsKey = true;
-        public boolean copyCoordinatesFormat = "%.1f %.1f %.1f";
+        public String copyCoordinatesFormat = "%.1f %.1f %.1f";
         public boolean chatOnWaypointAdd = true;
     }
 }

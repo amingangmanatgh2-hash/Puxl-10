@@ -29,9 +29,12 @@ public class PuxlQolFabric implements ClientModInitializer {
             PuxlClient.onFrame();
             HudRenderer.render(graphics);
         });
+        // System/game messages can be rewritten before they are shown.
         ClientReceiveMessageEvents.MODIFY_GAME.register((message, overlay) -> ChatTweaks.decorate(message));
-        ClientReceiveMessageEvents.MODIFY_CHAT.register(
-                (message, signedMessage, sender, params, receptionTimestamp) -> ChatTweaks.decorate(message));
+        // Fabric API has no modify hook for player chat, so those lines are only observed
+        // (which is what the copy-last-chat keybind needs). Forge and NeoForge timestamp both.
+        ClientReceiveMessageEvents.CHAT.register(
+                (message, signedMessage, sender, params, receptionTimestamp) -> ChatTweaks.observe(message));
 
         PuxlQol.log("Fabric/Quilt bootstrap complete");
     }

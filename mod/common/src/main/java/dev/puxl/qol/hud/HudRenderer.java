@@ -34,7 +34,7 @@ public final class HudRenderer {
         if (client.options.hideGui || PuxlClient.isScreenshotMode()) {
             return;
         }
-        if (config.hideWithDebugScreen && client.getDebugOverlay().showDebugScreen()) {
+        if (config.hideWithDebugScreen && debugScreenOpen(client)) {
             return;
         }
         if (PuxlClient.isZoomed() && config.modules != null && PuxlConfig.get().zoom.hideHudWhileZoomed) {
@@ -182,6 +182,29 @@ public final class HudRenderer {
 
     private static String waypointLabel(HudData data) {
         return String.format(Locale.ROOT, "%s %.0fm", data.nearestWaypoint.name, data.waypointDistance);
+    }
+
+    /**
+     * True while the F3 debug screen is up. Minecraft exposes it as
+     * {@code getDebugOverlay()} from 1.20.2 on and as the {@code renderDebug} option flag
+     * before that, so both are tried instead of pinning one game version.
+     */
+    private static boolean debugScreenOpen(Minecraft client) {
+        try {
+            Object overlay = client.getClass().getMethod("getDebugOverlay").invoke(client);
+            Object open = overlay.getClass().getMethod("showDebugScreen").invoke(overlay);
+            if (open instanceof Boolean value) {
+                return value;
+            }
+        } catch (Throwable ignored) {
+            // Older game version: fall through to the options flag.
+        }
+        try {
+            java.lang.reflect.Field field = client.options.getClass().getField("renderDebug");
+            return field.getBoolean(client.options);
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     public static int parseColor(String hex, int fallback) {

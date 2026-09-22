@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -106,10 +107,10 @@ public class PuxlConfigScreen extends Screen {
     private void buildHud(PuxlConfig config) {
         List<Row> rows = new ArrayList<>();
         rows.add(toggle("HUD enabled", () -> config.hud.enabled, v -> config.hud.enabled = v));
-        rows.add(Row.of(cycle("Position", config.hud.corner.name(), () -> {
+        rows.add(cycle("Position", config.hud.corner.name(), () -> {
             PuxlConfig.Corner[] values = PuxlConfig.Corner.values();
             config.hud.corner = values[(config.hud.corner.ordinal() + 1) % values.length];
-        })));
+        }));
         rows.add(slider("Scale", config.hud.scale, 0.5, 2.0, v -> config.hud.scale = v, "x"));
         rows.add(slider("Line spacing", config.hud.lineSpacing, 0.5, 2.0, v -> config.hud.lineSpacing = v, "x"));
         rows.add(toggle("Background panel", () -> config.hud.background, v -> config.hud.background = v));
@@ -302,7 +303,7 @@ public class PuxlConfigScreen extends Screen {
         holder[0] = button;
         refresh.run();
         addRenderableWidget(button);
-        return Row.of(button);
+        return Row.of(new WidgetHolder(button));
     }
 
     private Row cycle(String label, String unusedValue, Runnable onPress) {
@@ -312,13 +313,13 @@ public class PuxlConfigScreen extends Screen {
             rebuild();
         }).bounds(0, 0, 180, 20).build();
         addRenderableWidget(button);
-        return Row.of(button);
+        return Row.of(new WidgetHolder(button));
     }
 
     private Row slider(String label, double value, double min, double max, DoubleConsumer setter, String suffix) {
         PuxlSlider widget = new PuxlSlider(0, 0, 180, 20, label, value, min, max, suffix, setter);
         addRenderableWidget(widget);
-        return Row.of(widget);
+        return Row.of(new WidgetHolder(widget));
     }
 
     @Override
@@ -366,6 +367,15 @@ public class PuxlConfigScreen extends Screen {
         void setPosition(int x, int y);
     }
 
+    /** Positions any vanilla widget; the shared interface keeps the row list simple. */
+    private record WidgetHolder(AbstractWidget widget) implements AbstractWidgetHolder {
+        @Override
+        public void setPosition(int x, int y) {
+            widget.setX(x);
+            widget.setY(y);
+        }
+    }
+
     private record Row(AbstractWidgetHolder holder) {
         static Row of(AbstractWidgetHolder holder) {
             return new Row(holder);
@@ -377,7 +387,7 @@ public class PuxlConfigScreen extends Screen {
     }
 
     /** Slider wired to the config, with a live label. */
-    private static final class PuxlSlider extends AbstractSliderButton implements AbstractWidgetHolder {
+    private static final class PuxlSlider extends AbstractSliderButton {
         private final String label;
         private final String suffix;
         private final DoubleConsumer setter;
@@ -409,10 +419,5 @@ public class PuxlConfigScreen extends Screen {
             PuxlConfig.get().markDirty();
         }
 
-        @Override
-        public void setPosition(int x, int y) {
-            setX(x);
-            setY(y);
-        }
     }
 }

@@ -57,6 +57,17 @@ public final class ChatTweaks {
         return Component.literal(stamp).append(message);
     }
 
+    /** Records a received message for the copy-last-chat keybind, without changing it. */
+    public static void observe(Component message) {
+        if (message == null) {
+            return;
+        }
+        RECENT.addLast(message.getString());
+        while (RECENT.size() > KEEP_PLAIN) {
+            RECENT.removeFirst();
+        }
+    }
+
     public static String lastMessage() {
         return RECENT.peekLast();
     }
