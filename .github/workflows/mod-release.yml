@@ -1,0 +1,54 @@
+name: Mod release
+
+# Tag a commit with e.g. `git tag mod-v1.0.0 && git push origin mod-v1.0.0` to build
+# every loader jar and publish them as a GitHub release (the same host the launcher
+# downloads from, which keeps downloads usable where other hosts are blocked).
+on:
+  push:
+    tags:
+      - 'mod-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/mod.yml
+    permissions:
+      contents: write
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: puxl-qol-jars
+          path: mod-dist
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ls -la mod-dist
+          notes=$(cat <<'NOTES'
+          One mod, every supported loader and Minecraft version.
+
+          | File | Loader | Minecraft |
+          | --- | --- | --- |
+          | `puxl-qol-fabric-1.21.1` | Fabric, Quilt (Quilted Fabric API required) | 1.21.1 |
+          | `puxl-qol-fabric-1.20.1` | Fabric, Quilt (Quilted Fabric API required) | 1.20.1 |
+          | `puxl-qol-neoforge-1.21.1` | NeoForge | 1.21.1 |
+          | `puxl-qol-forge-1.20.1` | Forge | 1.20.1 |
+
+          Drop the jar for your version into `.minecraft/mods`, start the game and press `P` in game for the settings screen.
+          The mod is client side only; it changes nothing on the server and needs no permissions.
+          NOTES
+          )
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --notes "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" --title "Puxl QoL ${GITHUB_REF_NAME#mod-}" --notes "$notes"
+          fi
+          gh release upload "$GITHUB_REF_NAME" mod-dist/*.jar --clobber

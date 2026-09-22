@@ -1,0 +1,110 @@
+name: Mod build
+
+# Compiles the Puxl QoL mod for every supported loader and Minecraft version.
+# The development sandbox cannot reach the public mavens, so this workflow is the only
+# place the mod is compiled. Failed module logs are pushed into mod/build-logs/ (which is
+# otherwise git-ignored) so a failure can be inspected from anywhere.
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'mod/**'
+      - '.github/workflows/mod.yml'
+      - '.github/workflows/mod-release.yml'
+
+permissions:
+  contents: write
+
+env:
+  MODULES: |
+    fabric-1.21.1
+    fabric-1.20.1
+    neoforge-1.21.1
+    forge-1.20.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+          cache-read-only: false
+
+      - name: Build every module
+        run: |
+          mkdir -p mod/build-logs
+          failures=""
+          while read -r module; do
+            [ -z "$module" ] && continue
+            echo "::group::build $module"
+            if gradle -p mod ":$module:build" --no-daemon --stacktrace > "mod/build-logs/$module.log" 2>&1; then
+              echo "OK   $module"
+            else
+              echo "FAIL $module"
+              failures="$failures $module"
+            fi
+            tail -n 20 "mod/build-logs/$module.log"
+            echo "::endgroup::"
+          done <<< "$MODULES"
+          echo "failures:$failures"
+          if [ -n "$failures" ]; then
+            echo "MOD_BUILD_FAILED=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Trim logs to the useful tail
+        if: always()
+        run: |
+          for log in mod/build-logs/*.log; do
+            [ -f "$log" ] || continue
+            tail -n 400 "$log" > "$log.tmp" && mv "$log.tmp" "$log"
+          done
+          ls -la mod/build-logs || true
+
+      - name: Publish build logs when a module failed
+        if: always() && github.ref_type == 'branch' && env.MOD_BUILD_FAILED == '1'
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add -f mod/build-logs
+          git diff --cached --quiet && echo "no log changes" || git commit -m "chore(mod): build logs from $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for attempt in 1 2 3; do
+            git push && break || (git pull --rebase --autostash && sleep 5)
+          done
+
+      - name: Collect jars
+        if: always()
+        run: |
+          mkdir -p mod-dist
+          find mod -path '*/libs/*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' ! -name '*-javadoc.jar' -exec cp {} mod-dist/ \;
+          ls -la mod-dist
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: puxl-qol-jars
+          path: mod-dist/
+          if-no-files-found: warn
+
+      - name: Fail when a module did not build
+        if: env.MOD_BUILD_FAILED == '1'
+        run: |
+          echo "One or more modules failed to build; the tail of each log is in mod/build-logs on the branch."
+          exit 1

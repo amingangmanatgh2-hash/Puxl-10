@@ -1,0 +1,28 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/amingangmanatgh2-hash/Puxl-10/issues"
+
+[[mods]]
+modId = "puxl-qol"
+version = "${mod_version}"
+displayName = "Puxl QoL"
+authors = "Puxl"
+description = '''
+HUD, waypoints, zoom, chat tools and an automatic performance optimiser for the Puxl launcher.
+Client side only: it never changes gameplay, never talks to the server and can be removed at any time.
+'''
+
+[[dependencies.puxl-qol]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.puxl-qol]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.21.2)"
+ordering = "NONE"
+side = "CLIENT"

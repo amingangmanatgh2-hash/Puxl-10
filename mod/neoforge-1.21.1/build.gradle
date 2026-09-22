@@ -1,0 +1,46 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.147'
+}
+
+base {
+    archivesName = 'puxl-qol-neoforge-1.21.1'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+neoForge {
+    version = '21.1.251'
+}
+
+sourceSets {
+    main {
+        java.srcDir rootProject.file('common/src/main/java')
+        resources.srcDir rootProject.file('common/src/main/resources')
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand 'mod_version': project.version
+    }
+}
+
+jar {
+    manifest {
+        attributes([
+                'Specification-Title'   : 'puxl-qol',
+                'Specification-Version' : project.version,
+                'Implementation-Title'  : 'Puxl QoL',
+                'Implementation-Version': project.version
+        ])
+    }
+}

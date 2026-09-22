@@ -1,0 +1,11 @@
+{
+  "key.categories.puxl-qol": "Puxl QoL",
+  "key.puxl-qol.open_settings": "Open Puxl settings",
+  "key.puxl-qol.zoom": "Zoom (hold)",
+  "key.puxl-qol.toggle_hud": "Toggle Puxl HUD",
+  "key.puxl-qol.add_waypoint": "Add waypoint here",
+  "key.puxl-qol.remove_nearest_waypoint": "Remove nearest waypoint",
+  "key.puxl-qol.copy_coordinates": "Copy coordinates",
+  "key.puxl-qol.copy_last_chat": "Copy last chat message",
+  "key.puxl-qol.open_screenshots": "Open screenshots folder"
+}
