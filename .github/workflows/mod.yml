@@ -82,11 +82,25 @@ jobs:
           unzip -l "$jar" | tail -n 25
           unzip -l "$jar" | grep -q 'dev/puxl/qol/client/PuxlClient.class' || (echo "shared classes missing" && exit 1)
           unzip -l "$jar" | grep -q 'assets/puxl-qol/icon.png' || (echo "icon missing" && exit 1)
+          unzip -l "$jar" | grep -q 'key.puxl' || true
           case "${{ matrix.module }}" in
-            fabric-*) unzip -l "$jar" | grep -q 'fabric.mod.json' || (echo "fabric.mod.json missing" && exit 1) ;;
-            neoforge-*) unzip -l "$jar" | grep -q 'META-INF/neoforge.mods.toml' || (echo "neoforge.mods.toml missing" && exit 1) ;;
-            forge-*) unzip -l "$jar" | grep -q 'META-INF/mods.toml' || (echo "mods.toml missing" && exit 1) ;;
+            fabric-*)
+              unzip -l "$jar" | grep -q 'fabric.mod.json' || (echo "fabric.mod.json missing" && exit 1)
+              unzip -p "$jar" fabric.mod.json | grep -q 'dev.puxl.qol.fabric.PuxlQolFabric' || (echo "entrypoint missing" && exit 1)
+              unzip -p "$jar" fabric.mod.json | grep -q '\${' && (echo "unexpanded placeholder in fabric.mod.json" && exit 1) || true
+              ;;
+            neoforge-*)
+              unzip -l "$jar" | grep -q 'META-INF/neoforge.mods.toml' || (echo "neoforge.mods.toml missing" && exit 1)
+              unzip -p "$jar" META-INF/neoforge.mods.toml | grep -q '^version = ' || (echo "mod version missing" && exit 1)
+              unzip -p "$jar" META-INF/neoforge.mods.toml | grep -q '\${' && (echo "unexpanded placeholder in neoforge.mods.toml" && exit 1) || true
+              ;;
+            forge-*)
+              unzip -l "$jar" | grep -q 'META-INF/mods.toml' || (echo "mods.toml missing" && exit 1)
+              unzip -p "$jar" META-INF/mods.toml | grep -q '^version = ' || (echo "mod version missing" && exit 1)
+              unzip -p "$jar" META-INF/mods.toml | grep -q '\${' && (echo "unexpanded placeholder in mods.toml" && exit 1) || true
+              ;;
           esac
+          javap -cp "$jar" dev.puxl.qol.client.PuxlClient | head -n 4
           echo "layout ok"
 
       - uses: actions/upload-artifact@v4
