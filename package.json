@@ -73,7 +73,7 @@
         }
       ],
       "icon": "build/icon.png",
-      "artifactName": "Puxl-Launcher-${version}-${arch}-${ext}.exe"
+      "artifactName": "Puxl-Launcher-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -87,10 +87,11 @@
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico",
       "deleteAppDataOnUninstall": false,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "artifactName": "Puxl-Launcher-${version}-setup.${ext}"
     },
     "portable": {
-      "artifactName": "Puxl-Launcher-${version}-portable.exe"
+      "artifactName": "Puxl-Launcher-${version}-portable.${ext}"
     },
     "linux": {
       "target": [
