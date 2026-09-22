@@ -303,9 +303,11 @@ async function main(): Promise<void> {
   })
 
   await test('update state is queryable without hitting the network', async () => {
+    // Read the version from package.json so bumping the launcher never breaks this.
+    const { version } = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')) as { version: string }
     const state = await call<{ status: string; currentVersion: string }>('update:state')
     assert.equal(state.status, 'idle')
-    assert.equal(state.currentVersion, '1.1.0')
+    assert.equal(state.currentVersion, version)
     assert.equal(await call<boolean>('update:portable'), false)
     assert.equal(await call<boolean>('update:clearCache'), true)
   })

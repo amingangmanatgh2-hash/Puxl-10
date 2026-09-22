@@ -37,6 +37,9 @@ jobs:
       - name: IPC integration tests
         run: npm run smoke:ipc
 
+      - name: Update flow test (local release server)
+        run: npm run smoke:update
+
       - name: Build bundles
         run: npm run build
 

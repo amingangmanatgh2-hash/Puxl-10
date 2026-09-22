@@ -61,6 +61,8 @@ It is **not** a cheat client. See [What Puxl will never do](#what-puxl-will-neve
 - Download uses the mirrored, resumable downloader, so a blocked GitHub still works through a proxy prefix.
 - Installer runs silently (`/S`) after the launcher closes; the portable build reveals the new exe instead.
 - The proxy you configure is applied to Electron's own session too, so update checks and remote mod icons honour it.
+- Set `PUXL_RELEASE_API=https://your-mirror/release.json` to point update checks at your own mirror or relay instead
+  of GitHub. `npm run check:update` runs the same code from the command line for troubleshooting.
 
 ### Network (built for Iran and other restricted networks)
 - Three mirror modes: official first, **mirrors first**, or direct only.
@@ -109,6 +111,9 @@ Two headless suites run in CI on every push:
 - `npm run smoke:ipc` — the full IPC surface (67 channels) driven exactly like the UI drives it, asserting on
   instance CRUD, account validation, mod listing/toggling, health checks, disk usage, launch guards, update
   handling and the offline assistant.
+- `npm run smoke:update` — boots a local HTTP release server and drives the real updater through it: version
+  comparison, installer selection, resumable download, progress reporting, the `ready` state, an up-to-date tag and
+  an unreachable endpoint.
 - `npm run check:package` — copies the built `out/` into a scratch folder with **no `node_modules`** (the inside of
   `app.asar`), boots the real main bundle there and asserts the download stack is bundled and 60+ channels register.
   `undici` and `unzipper` are compiled into the main process, so the installed app has no runtime module resolution

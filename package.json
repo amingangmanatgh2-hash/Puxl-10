@@ -1,7 +1,7 @@
 {
   "name": "puxl-launcher",
-  "version": "1.1.0",
-  "description": "Puxl Launcher — a fast, beautiful Minecraft Java launcher with a built-in mod manager, performance tuner and Iran-friendly downloads.",
+  "version": "1.1.1",
+  "description": "Puxl Launcher \u2014 a fast, beautiful Minecraft Java launcher with a built-in mod manager, performance tuner and Iran-friendly downloads.",
   "main": "./out/main/index.js",
   "author": "Puxl",
   "license": "MIT",
@@ -15,12 +15,14 @@
     "dist:portable": "npm run build && electron-builder --win --x64 --config.win.target=portable --publish never",
     "dist:dir": "npm run build && electron-builder --dir",
     "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=cjs --target=node20 --alias:electron=./scripts/electron-stub.js --external:@aws-sdk/client-s3 --external:undici --outfile=.smoke/smoke.cjs --log-level=warning && node .smoke/smoke.cjs",
-    "verify": "npm run typecheck && npm run smoke && npm run smoke:ipc && npm run build && npm run check:package",
+    "verify": "npm run typecheck && npm run smoke && npm run smoke:ipc && npm run smoke:update && npm run build && npm run check:package",
     "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
     "typecheck:web": "tsc -p tsconfig.web.json --noEmit",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "smoke:ipc": "esbuild scripts/ipc-smoke.ts --bundle --platform=node --format=cjs --target=node20 --alias:electron=./scripts/electron-stub.js --external:@aws-sdk/client-s3 --outfile=.smoke/ipc.cjs --log-level=warning && node .smoke/ipc.cjs",
-    "check:package": "node scripts/package-check.cjs"
+    "check:package": "node scripts/package-check.cjs",
+    "check:update": "node scripts/update-check.cjs",
+    "smoke:update": "node scripts/update-e2e.cjs"
   },
   "dependencies": {},
   "devDependencies": {

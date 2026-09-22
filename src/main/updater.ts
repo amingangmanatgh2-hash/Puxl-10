@@ -75,8 +75,15 @@ export function pickInstallerAsset(assets: ReleaseAsset[]): ReleaseAsset | null 
   )
 }
 
-/** Release API endpoints, official first then GitHub reverse proxies for restricted networks. */
+/**
+ * Release API endpoints, official first then GitHub reverse proxies for restricted
+ * networks. `PUXL_RELEASE_API` overrides everything — point it at your own mirror,
+ * a self-hosted copy of the release json, or your own relay.
+ */
 export function releaseApiUrls(): string[] {
+  const override = process.env.PUXL_RELEASE_API?.trim()
+  if (override) return [override]
+
   const official = `https://api.github.com/repos/${REPO.owner}/${REPO.repo}/releases/latest`
   const list = [official]
   for (const proxy of GITHUB_PROXIES) list.push(`${proxy}${official}`)
