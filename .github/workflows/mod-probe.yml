@@ -1,8 +1,8 @@
 name: Mod dependency probe
 
 # One-shot helper: resolves the exact loader/plugin versions available on the public
-# mavens (they are unreachable from the development sandbox) and publishes the list
-# as a PR comment plus an artifact, so the mod build files can pin real versions.
+# mavens (they are unreachable from the development sandbox) and commits the list
+# back to the branch, so the mod build files can pin real versions.
 on:
   workflow_dispatch:
   push:
@@ -11,7 +11,7 @@ on:
       - '.github/scripts/probe-versions.sh'
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -20,45 +20,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Introspect runner
-        if: always()
-        run: |
-          {
-            echo "## runner introspection"
-            echo ""
-            echo '```'
-            echo "pwd: $(pwd)"
-            echo "bash: $(bash --version | head -1)"
-            echo "curl: $(curl --version | head -1)"
-            echo "files:"
-            ls -la
-            echo "scripts:"
-            ls -la .github/scripts || echo "no scripts dir"
-            echo "git: $(git rev-parse --short HEAD) on $(git branch --show-current)"
-            echo '```'
-          } > diag.md 2>&1 || true
-
-      - name: Run probe
-        if: always()
+      - name: Collect maven metadata
         continue-on-error: true
         run: |
-          mkdir -p report
-          bash .github/scripts/probe-versions.sh report/versions.md >> diag.md 2>&1 || echo "probe exit=$?" >> diag.md
-          echo "report dir:" >> diag.md
-          ls -la report >> diag.md 2>&1 || true
+          mkdir -p mod
+          bash .github/scripts/probe-versions.sh mod/versions-report.md >> probe.log 2>&1 || true
+          wc -l mod/versions-report.md || true
+          tail -c 2000 probe.log || true
 
-      - name: Publish report
-        if: always()
+      - name: Commit the report
         run: |
-          tail -c 20000 diag.md > diag-tail.md || true
-          gh pr comment 1 --body-file diag-tail.md --edit-last --create-if-none || gh pr comment 1 --body-file diag-tail.md || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add -f mod/versions-report.md
+          git diff --cached --quiet && echo "nothing to commit" || git commit -m "chore(mod): toolchain version report from $(date -u +%Y-%m-%d)"
+          git push || true
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: mod-version-probe
           path: |
-            diag.md
-            report/
+            mod/versions-report.md
+            probe.log
