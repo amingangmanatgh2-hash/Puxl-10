@@ -18,16 +18,17 @@ on:
 permissions:
   contents: write
 
-env:
-  MODULES: |
-    fabric-1.21.1
-    fabric-1.20.1
-    neoforge-1.21.1
-    forge-1.20.1
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - fabric-1.21.1
+          - fabric-1.20.1
+          - neoforge-1.21.1
+          - forge-1.20.1
     steps:
       - uses: actions/checkout@v4
 
@@ -37,74 +38,45 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.14'
-          cache-read-only: false
 
-      - name: Build every module
+      - name: Build ${{ matrix.module }}
         run: |
           mkdir -p mod/build-logs
-          failures=""
-          while read -r module; do
-            [ -z "$module" ] && continue
-            echo "::group::build $module"
-            if gradle -p mod ":$module:build" --no-daemon --stacktrace > "mod/build-logs/$module.log" 2>&1; then
-              echo "OK   $module"
-            else
-              echo "FAIL $module"
-              failures="$failures $module"
-            fi
-            tail -n 20 "mod/build-logs/$module.log"
-            echo "::endgroup::"
-          done <<< "$MODULES"
-          echo "failures:$failures"
-          if [ -n "$failures" ]; then
-            echo "MOD_BUILD_FAILED=1" >> "$GITHUB_ENV"
+          args="--no-daemon --stacktrace"
+          if [ -n "${{ github.ref_name }}" ] && [ "${{ github.ref_type }}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#mod-v}"
+            args="$args -Pmod_version=$version"
           fi
+          set +e
+          gradle -p "mod/${{ matrix.module }}" build $args > "mod/build-logs/${{ matrix.module }}.log" 2>&1
+          status=$?
+          set -e
+          tail -n 25 "mod/build-logs/${{ matrix.module }}.log"
+          exit $status
 
-      - name: Trim logs to the useful tail
+      - name: Trim the log to its useful tail
         if: always()
         run: |
-          for log in mod/build-logs/*.log; do
-            [ -f "$log" ] || continue
-            tail -n 400 "$log" > "$log.tmp" && mv "$log.tmp" "$log"
-          done
-          ls -la mod/build-logs || true
+          log="mod/build-logs/${{ matrix.module }}.log"
+          [ -f "$log" ] && tail -n 400 "$log" > "$log.tmp" && mv "$log.tmp" "$log" || true
 
-      - name: Publish build logs when a module failed
-        if: always() && github.ref_type == 'branch' && env.MOD_BUILD_FAILED == '1'
+      - name: Publish the log when the build failed
+        if: failure() && github.ref_type == 'branch'
         run: |
           git config user.email "actions@github.com"
           git config user.name "github-actions"
-          git add -f mod/build-logs
-          git diff --cached --quiet && echo "no log changes" || git commit -m "chore(mod): build logs from $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          for attempt in 1 2 3; do
+          git add -f "mod/build-logs/${{ matrix.module }}.log"
+          git diff --cached --quiet && echo "no log changes" || git commit -m "chore(mod): ${{ matrix.module }} build log $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for attempt in 1 2 3 4 5; do
             git push && break || (git pull --rebase --autostash && sleep 5)
           done
 
-      - name: Collect jars
-        if: always()
-        run: |
-          mkdir -p mod-dist
-          find mod -path '*/libs/*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' ! -name '*-javadoc.jar' -exec cp {} mod-dist/ \;
-          ls -la mod-dist
-
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: success()
         with:
-          name: puxl-qol-jars
-          path: mod-dist/
-          if-no-files-found: warn
-
-      - name: Fail when a module did not build
-        if: env.MOD_BUILD_FAILED == '1'
-        run: |
-          echo "One or more modules failed to build; the tail of each log is in mod/build-logs on the branch."
-          exit 1
+          name: jar-${{ matrix.module }}
+          path: mod/${{ matrix.module }}/build/libs/*.jar
+          if-no-files-found: error

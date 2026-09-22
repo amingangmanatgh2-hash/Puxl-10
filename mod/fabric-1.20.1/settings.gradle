@@ -8,11 +8,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'puxl-qol'
+rootProject.name = 'puxl-qol-fabric-1.20.1'
 
-// One project per loader and Minecraft generation. They all compile the same shared
-// sources in `common`; only the loader glue and the build file differ.
-include 'fabric-1.21.1'
-include 'fabric-1.20.1'
-include 'neoforge-1.21.1'
-include 'forge-1.20.1'
+// Each loader build is standalone so a failure in one can never affect the others;
+// they all compile the same shared sources from ../common.

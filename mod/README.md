@@ -68,9 +68,15 @@ a JDK 21 plus a JDK 17 available:
 
 ```bash
 cd mod
-gradle :fabric-1.21.1:build :fabric-1.20.1:build :neoforge-1.21.1:build :forge-1.20.1:build
+gradle -p fabric-1.21.1 build
+gradle -p fabric-1.20.1 build
+gradle -p neoforge-1.21.1 build
+gradle -p forge-1.20.1 build
 ```
 
-Jars land in `mod/<module>/build/libs`. Tagging a commit `mod-v1.0.0` and pushing the tag runs
+Every module is a standalone Gradle build (its own `settings.gradle`) that pulls in the shared
+sources from `../common`, so one loader's toolchain can never disturb another's. Jars land in
+`mod/<module>/build/libs`, and the bytecode level follows the Minecraft generation (21 for 1.21.1,
+17 for 1.20.1) while the build itself runs on JDK 21. Tagging a commit `mod-v1.0.0` and pushing the tag runs
 `.github/workflows/mod-release.yml`, which builds all four jars and attaches them to a GitHub
 release — the same host the launcher downloads from, so the files stay reachable from Iran.

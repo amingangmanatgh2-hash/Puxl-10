@@ -24,7 +24,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: puxl-qol-jars
+          pattern: jar-*
+          merge-multiple: true
           path: mod-dist
 
       - name: Publish the release
