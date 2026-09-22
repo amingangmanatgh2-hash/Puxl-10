@@ -1,8 +1,8 @@
 name: Mod release
 
-# Tag a commit with e.g. `git tag mod-v1.0.0 && git push origin mod-v1.0.0` to build
-# every loader jar and publish them as a GitHub release (the same host the launcher
-# downloads from, which keeps downloads usable where other hosts are blocked).
+# Tag a commit with e.g. `git tag mod-v1.0.0 && git push origin mod-v1.0.0` to build every
+# loader jar and publish them as a GitHub release. Releases live on GitHub (the same host
+# the launcher downloads from), which keeps the files reachable from Iran.
 on:
   push:
     tags:
@@ -21,30 +21,42 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
-          pattern: jar-*
+          pattern: 'jar-*'
           merge-multiple: true
           path: mod-dist
 
       - name: Publish the release
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
+          set -o pipefail
+          exec > >(tee release.log) 2>&1
           ls -la mod-dist
           notes=$(cat <<'NOTES'
           One mod, every supported loader and Minecraft version.
 
           | File | Loader | Minecraft |
           | --- | --- | --- |
-          | `puxl-qol-fabric-1.21.1` | Fabric, Quilt (Quilted Fabric API required) | 1.21.1 |
-          | `puxl-qol-fabric-1.20.1` | Fabric, Quilt (Quilted Fabric API required) | 1.20.1 |
-          | `puxl-qol-neoforge-1.21.1` | NeoForge | 1.21.1 |
-          | `puxl-qol-forge-1.20.1` | Forge | 1.20.1 |
+          | `puxl-qol-fabric-1.21.1-<version>.jar` | Fabric and Quilt (needs Quilted Fabric API) | 1.21.1 |
+          | `puxl-qol-fabric-1.20.1-<version>.jar` | Fabric and Quilt (needs Quilted Fabric API) | 1.20.1 |
+          | `puxl-qol-neoforge-1.21.1-<version>.jar` | NeoForge | 1.21.1 |
+          | `puxl-qol-forge-1.20.1-<version>.jar` | Forge | 1.20.1 |
 
-          Drop the jar for your version into `.minecraft/mods`, start the game and press `P` in game for the settings screen.
-          The mod is client side only; it changes nothing on the server and needs no permissions.
+          Drop the jar that matches your loader and Minecraft version into `.minecraft/mods`,
+          start the game and press `P` for the settings screen. The mod adds a customisable HUD,
+          hold-to-zoom, waypoints, chat tools and an automatic performance optimiser.
+
+          Client side only: it never changes gameplay or world data, never talks to the server,
+          and removing the jar leaves nothing behind but its own files in `config/`.
           NOTES
           )
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
@@ -53,3 +65,14 @@ jobs:
             gh release create "$GITHUB_REF_NAME" --title "Puxl QoL ${GITHUB_REF_NAME#mod-}" --notes "$notes"
           fi
           gh release upload "$GITHUB_REF_NAME" mod-dist/*.jar --clobber
+
+      - name: Push the release log when it failed
+        if: failure()
+        run: |
+          mkdir -p mod/build-logs
+          tail -n 200 release.log > mod/build-logs/release.log || true
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add -f mod/build-logs/release.log
+          git commit -m "chore(mod): release log for ${GITHUB_REF_NAME}" || true
+          git push origin HEAD:refs/heads/arena/01a0c812-puxl-10 || true
