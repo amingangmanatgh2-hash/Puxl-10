@@ -1,0 +1,103 @@
+{
+  "name": "puxl-launcher",
+  "version": "1.0.0",
+  "description": "Puxl Launcher — a fast, beautiful Minecraft Java launcher with a built-in mod manager, performance tuner and Iran-friendly downloads.",
+  "main": "./out/main/index.js",
+  "author": "Puxl",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "start": "electron-vite preview",
+    "build": "electron-vite build",
+    "postinstall": "electron-builder install-app-deps",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never",
+    "dist:portable": "npm run build && electron-builder --win --x64 --config.win.target=portable --publish never",
+    "dist:dir": "npm run build && electron-builder --dir",
+    "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=cjs --target=node20 --alias:electron=./scripts/electron-stub.js --external:@aws-sdk/client-s3 --external:undici --outfile=.smoke/smoke.cjs --log-level=warning && node .smoke/smoke.cjs",
+    "verify": "npm run typecheck && npm run smoke && npm run build",
+    "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
+    "typecheck:web": "tsc -p tsconfig.web.json --noEmit",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web"
+  },
+  "dependencies": {
+    "undici": "^8.11.0",
+    "unzipper": "^0.12.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/unzipper": "^0.10.10",
+    "@vitejs/plugin-react": "^5.2.0",
+    "clsx": "^2.1.1",
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "framer-motion": "^13.4.0",
+    "lucide-react": "^1.47.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.7.2",
+    "vite": "^7.3.6",
+    "zustand": "^5.0.15"
+  },
+  "build": {
+    "appId": "com.puxl.launcher",
+    "productName": "Puxl Launcher",
+    "copyright": "Puxl Launcher",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "Puxl-Launcher-${version}-${arch}-${ext}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Puxl Launcher",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "Puxl-Launcher-${version}-portable.exe"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game",
+      "icon": "build/icon.png"
+    }
+  }
+}
