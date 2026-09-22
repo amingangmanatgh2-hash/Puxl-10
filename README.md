@@ -92,9 +92,14 @@ npm run verify       # typecheck + smoke tests + production bundle
 npm run dist:win     # build the Windows installer and portable exe into dist/
 ```
 
-`npm run smoke` runs a headless test suite over the launcher logic that breaks silently in production: Mojang rule
-evaluation, library/native resolution across platforms, version inheritance, argument flattening, mirror rewriting,
-JVM tuning, `options.txt` merging, offline UUIDs and the mod registry.
+Two headless suites run in CI on every push:
+
+- `npm run smoke` — launcher logic that breaks silently in production: Mojang rule evaluation, library/native
+  resolution across platforms, version inheritance, argument flattening, mirror rewriting, JVM tuning, `options.txt`
+  merging, offline UUIDs and the mod registry.
+- `npm run smoke:ipc` — the full IPC surface (60 channels) driven exactly like the UI drives it, asserting on
+  instance CRUD, account validation, mod listing/toggling, health checks, disk usage, launch guards and the
+  offline assistant.
 
 ## How the pieces fit
 

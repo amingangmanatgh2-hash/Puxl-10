@@ -31,8 +31,11 @@ jobs:
       - name: Typecheck renderer
         run: npm run typecheck:web
 
-      - name: Smoke tests (rules, libraries, mirrors, presets)
+      - name: Logic smoke tests (rules, libraries, mirrors, presets)
         run: npm run smoke
+
+      - name: IPC integration tests
+        run: npm run smoke:ipc
 
       - name: Build bundles
         run: npm run build

@@ -7,6 +7,11 @@ const path = require('node:path')
 
 const appData = process.platform === 'win32' ? process.env.APPDATA : path.join(os.homedir(), 'Library', 'Application Support')
 
+// Handlers registered through ipcMain.handle land here so tests can invoke them
+// exactly the way the renderer would (including the ok/error envelope).
+const handlers = new Map()
+global.__puxlIpcHandlers = handlers
+
 module.exports = {
   app: {
     getPath: (name) => {
@@ -31,7 +36,7 @@ module.exports = {
     openExternal: async () => undefined
   },
   clipboard: { writeText: () => undefined },
-  ipcMain: { handle: () => undefined },
+  ipcMain: { handle: (channel, fn) => handlers.set(channel, fn) },
   Menu: { setApplicationMenu: () => undefined, buildFromTemplate: () => ({}) },
   Tray: class {},
   nativeImage: { createFromPath: () => ({ isEmpty: () => true }), createEmpty: () => ({}) },

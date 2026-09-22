@@ -15,10 +15,11 @@
     "dist:portable": "npm run build && electron-builder --win --x64 --config.win.target=portable --publish never",
     "dist:dir": "npm run build && electron-builder --dir",
     "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=cjs --target=node20 --alias:electron=./scripts/electron-stub.js --external:@aws-sdk/client-s3 --external:undici --outfile=.smoke/smoke.cjs --log-level=warning && node .smoke/smoke.cjs",
-    "verify": "npm run typecheck && npm run smoke && npm run build",
+    "verify": "npm run typecheck && npm run smoke && npm run smoke:ipc && npm run build",
     "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
     "typecheck:web": "tsc -p tsconfig.web.json --noEmit",
-    "typecheck": "npm run typecheck:node && npm run typecheck:web"
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "smoke:ipc": "esbuild scripts/ipc-smoke.ts --bundle --platform=node --format=cjs --target=node20 --alias:electron=./scripts/electron-stub.js --external:@aws-sdk/client-s3 --outfile=.smoke/ipc.cjs --log-level=warning && node .smoke/ipc.cjs"
   },
   "dependencies": {
     "undici": "^8.11.0",
