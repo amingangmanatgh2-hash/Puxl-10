@@ -40,6 +40,9 @@ jobs:
       - name: Build bundles
         run: npm run build
 
+      - name: Packaged layout check (bundled deps, no node_modules)
+        run: npm run check:package
+
       - name: Upload build output
         uses: actions/upload-artifact@v4
         with:

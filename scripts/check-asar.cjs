@@ -1,14 +1,21 @@
 /**
- * Guards the packaged app against the classic Electron packaging bug: the main
- * process requires undici and unzipper at runtime, so if they are missing from
- * app.asar the installed launcher dies on the first download.
+ * Guards the packaged app against the classic Electron packaging bug: if the
+ * downloader or the zip reader were left out of the bundle, the installed
+ * launcher dies on the first download.
  *
- * Reads the asar header directly — no asar CLI, no network, no encoding games.
+ * Both libraries are bundled into out/main/index.js, so this asserts on markers
+ * that only exist in their code. Reads the asar directly — no asar CLI, no
+ * network, no encoding games.
  */
 const fs = require('node:fs')
 const path = require('node:path')
 
-const REQUIRED = ['node_modules/undici', 'node_modules/unzipper']
+const REQUIRED = [
+  // undici
+  'UND_ERR_CONNECT_TIMEOUT',
+  // unzipper
+  'FILE_ENDED'
+]
 const dist = path.join(__dirname, '..', 'dist')
 
 if (!fs.existsSync(dist)) {
@@ -36,9 +43,9 @@ const contents = fs.readFileSync(asar)
 const missing = REQUIRED.filter((dep) => !contents.includes(Buffer.from(dep, 'utf8')))
 
 if (missing.length > 0) {
-  console.error(`app.asar is missing runtime dependencies: ${missing.join(', ')}`)
-  console.error('Add them explicitly to build.files in package.json.')
+  console.error(`app.asar is missing bundled libraries: ${missing.join(', ')}`)
+  console.error('Check electron.vite.config.ts — undici/unzipper must not be externalised.')
   process.exit(1)
 }
 
-console.log(`ok: ${missing.length === 0 ? 'all' : ''} runtime dependencies present in ${path.relative(process.cwd(), asar)} (${(contents.length / 1024 / 1024).toFixed(1)} MB)`)
+console.log(`ok: all bundled libraries present in ${path.relative(process.cwd(), asar)} (${(contents.length / 1024 / 1024).toFixed(1)} MB)`)

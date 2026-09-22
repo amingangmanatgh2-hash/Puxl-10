@@ -5,7 +5,15 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    // Only Electron stays external: undici and unzipper are bundled straight into
+    // out/main/index.js so the packaged app needs no node_modules at all.
+    plugins: [externalizeDepsPlugin({ exclude: ['undici', 'unzipper'] })],
+    resolve: {
+      alias: {
+        // unzipper's optional S3 support is never used by Puxl.
+        '@aws-sdk/client-s3': resolve(__dirname, 'src/main/stubs/aws-sdk-stub.ts')
+      }
+    },
     build: {
       rollupOptions: {
         input: { index: resolve(__dirname, 'src/main/index.ts') }
